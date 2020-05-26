@@ -19,8 +19,10 @@ source-repository head
     location: https://github.com/vmchale/shake-dhall
 
 library
-    exposed-modules:  Dhall.Dep
-                    , Development.Shake.Dhall
+    exposed-modules:
+        Dhall.Dep
+        Development.Shake.Dhall
+
     hs-source-dirs:   src
     default-language: Haskell2010
     ghc-options:      -Wall
@@ -29,7 +31,7 @@ library
         dhall >=1.25.0,
         text -any,
         containers >=0.6,
-        shake,
+        shake -any,
         filepath -any
 
     if impl(ghc >=8.0)
