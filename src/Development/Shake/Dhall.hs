@@ -6,7 +6,7 @@ import           Data.Containers.ListUtils (nubOrd)
 import           Development.Shake         (Action, need)
 import           Dhall.Dep
 
--- | Need some @.dhall@ files and imported dependencies
+-- | 'need' some @.dhall@ files and imported dependencies
 needDhall :: [FilePath] -> Action ()
 needDhall fps =
     need =<< liftIO (nubOrd . concat . (fps:) <$> traverse getAllFileDeps fps)
