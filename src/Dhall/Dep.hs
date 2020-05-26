@@ -23,8 +23,6 @@ getFileDeps fp = do
         imports = toList tree
     catMaybes <$> traverse (fmap (fileMod <$>) . fromImport) imports
 
--- TODO: allow filtering ?
-
 -- | Get all transitive dependencies
 getAllFileDeps :: FilePath -> IO [FilePath]
 getAllFileDeps fp = do
