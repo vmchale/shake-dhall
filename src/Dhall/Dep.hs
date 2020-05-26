@@ -11,17 +11,19 @@ import           Dhall.Core        (Import, ImportType (..), importHashed,
                                     importType)
 import           Dhall.Import      (localToPath)
 import           Dhall.Parser      (exprFromText)
-import           System.FilePath   (takeDirectory, (</>))
+import           System.FilePath   (isAbsolute, takeDirectory, (</>))
 
 -- | Given a path, the file paths it depends on
 getFileDeps :: FilePath -> IO [FilePath]
 getFileDeps fp = do
     contents <- T.readFile fp
     let fileDir = takeDirectory fp
-        fileMod = (fileDir </>)
+        fileMod fp' = if isAbsolute fp' then fp' else fileDir </> fp'
         tree = either throw id (exprFromText fp contents)
         imports = toList tree
     catMaybes <$> traverse (fmap (fileMod <$>) . fromImport) imports
+
+-- TODO: allow filtering ?
 
 -- | Get all transitive dependencies
 getAllFileDeps :: FilePath -> IO [FilePath]
@@ -32,7 +34,6 @@ getAllFileDeps fp = do
         next = rmdups (mconcat (deps : level))
     pure $ if null level then deps else next
 
--- TODO: custom?
 fromImport :: Import -> IO (Maybe FilePath)
 fromImport = fromImportType . importType . importHashed
 
