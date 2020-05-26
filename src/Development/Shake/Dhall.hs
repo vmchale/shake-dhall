@@ -8,6 +8,5 @@ import           Dhall.Dep
 
 -- | Need some @.dhall@ files and imported dependencies
 needDhall :: [FilePath] -> Action ()
-needDhall fps = do
-    transDeps <- liftIO (concat . (fps:) <$> traverse getAllFileDeps fps)
-    need (nubOrd transDeps)
+needDhall fps =
+    need =<< liftIO (nubOrd . concat . (fps:) <$> traverse getAllFileDeps fps)
