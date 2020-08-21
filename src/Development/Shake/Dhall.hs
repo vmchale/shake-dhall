@@ -15,7 +15,7 @@ needDhall :: [FilePath] -> Action ()
 needDhall fps =
     need =<< liftIO (nubOrd . concat . (fps:) <$> traverse getAllFileDeps fps)
 
--- | Same as 'needDhallCli' but shells out to the command-line executable
+-- | Same as 'needDhall' but shells out to the command-line executable
 --
 -- @since 0.1.1.0
 needDhallCli :: [FilePath] -> Action ()
