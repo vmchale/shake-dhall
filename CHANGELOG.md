@@ -1,5 +1,7 @@
 # shake-dhall
 
+## 0.1.1.1
+
   * Documentation typos
 
 ## 0.1.1.0
