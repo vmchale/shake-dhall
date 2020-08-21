@@ -1,5 +1,11 @@
 # shake-dhall
 
+## 0.1.1.2
+
+  * Add test suite
+  * Fix bug uncovered by test suite
+  * Canonicalize paths
+
 ## 0.1.1.1
 
   * Documentation typos

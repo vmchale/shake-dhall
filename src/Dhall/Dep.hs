@@ -3,6 +3,7 @@ module Dhall.Dep ( getFileDeps
                  ) where
 
 import           Control.Exception         (throw)
+import           Control.Monad             ((<=<))
 import           Data.Containers.ListUtils (nubOrd)
 import           Data.Foldable             (toList)
 import           Data.Maybe                (catMaybes)
@@ -11,6 +12,8 @@ import           Dhall.Core                (Import, ImportType (..),
                                             importHashed, importType)
 import           Dhall.Import              (localToPath)
 import           Dhall.Parser              (exprFromText)
+import           System.Directory          (canonicalizePath,
+                                            makeRelativeToCurrentDirectory)
 import           System.FilePath           (isAbsolute, takeDirectory, (</>))
 
 -- | Given a path, the file paths it depends on
@@ -21,15 +24,20 @@ getFileDeps fp = do
         fileMod fp' = if isAbsolute fp' then fp' else fileDir </> fp'
         tree = either throw id (exprFromText fp contents)
         imports = toList tree
-    catMaybes <$> traverse (fmap (fileMod <$>) . fromImport) imports
+    traverse canonicalizeRelative =<<
+        catMaybes <$> traverse (fmap (fileMod <$>) . fromImport) imports
+
+canonicalizeRelative :: FilePath -> IO FilePath
+canonicalizeRelative = makeRelativeToCurrentDirectory <=< canonicalizePath
 
 -- | Get all transitive dependencies
 getAllFileDeps :: FilePath -> IO [FilePath]
 getAllFileDeps fp = do
     deps <- getFileDeps fp
-    level <- traverse getFileDeps deps
-    let next = nubOrd (mconcat (deps : level))
-    pure $ if null level then deps else next
+    level <- traverse getAllFileDeps deps
+    pure $ if null level
+        then deps
+        else nubOrd (concat (deps : level))
 
 fromImport :: Import -> IO (Maybe FilePath)
 fromImport = fromImportType . importType . importHashed
