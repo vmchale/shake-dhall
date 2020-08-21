@@ -33,7 +33,7 @@ library
         containers >=0.6,
         shake -any,
         filepath -any,
-        directory
+        directory -any
 
     if impl(ghc >=8.0)
         ghc-options:
