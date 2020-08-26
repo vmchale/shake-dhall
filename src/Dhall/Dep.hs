@@ -4,7 +4,6 @@ module Dhall.Dep ( getFileDeps
 
 import           Control.Exception         (throw)
 import           Control.Monad             ((<=<))
-import           Data.Bifunctor            (first, second)
 import           Data.Containers.ListUtils (nubOrd)
 import           Data.Foldable             (toList)
 import qualified Data.Text.IO              as T
@@ -40,7 +39,7 @@ canonicalizeRelative = makeRelativeToCurrentDirectory <=< canonicalizePath
 getAllCodeDeps :: FilePath -> IO [DhallImport]
 getAllCodeDeps fp = do
     deps <- traverse (traverseFp canonicalizeRelative) =<< getCodeDeps fp
-    let (nextSrc, _) = partitionImports deps
+    let nextSrc = codeImports deps
     level <- traverse getAllCodeDeps nextSrc
     pure $ if null level
         then deps
@@ -56,11 +55,11 @@ data DhallImport = DhallCode FilePath
                  | Irrelevant -- for URLs and such
                  deriving (Ord, Eq)
 
-partitionImports :: [DhallImport] -> ([FilePath], [FilePath])
-partitionImports []                  = ([], [])
-partitionImports (Irrelevant:is)     = partitionImports is
-partitionImports (DhallCode fp:is)   = first (fp:) $ partitionImports is
-partitionImports (OtherImport fp:is) = second (fp:) $ partitionImports is
+codeImports :: [DhallImport] -> [FilePath]
+codeImports []                 = []
+codeImports (Irrelevant:is)    = codeImports is
+codeImports (DhallCode fp:is)  = fp : codeImports is
+codeImports (OtherImport{}:is) = codeImports is
 
 mapFp :: (FilePath -> FilePath) -> DhallImport -> DhallImport
 mapFp f (DhallCode fp)   = DhallCode $ f fp
