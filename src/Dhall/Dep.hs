@@ -8,9 +8,9 @@ import           Data.Bifunctor            (first, second)
 import           Data.Containers.ListUtils (nubOrd)
 import           Data.Foldable             (toList)
 import qualified Data.Text.IO              as T
-import           Dhall.Core                (Import, ImportMode (Code),
+import           Dhall.Core                (Import (Import), ImportMode (Code),
                                             ImportType (Local), importHashed,
-                                            importMode, importType)
+                                            importType)
 import           Dhall.Import              (localToPath)
 import           Dhall.Parser              (exprFromText)
 import           System.Directory          (canonicalizePath,
@@ -83,8 +83,8 @@ isRelevant Irrelevant = False
 isRelevant _          = True
 
 fromImport :: Import -> IO DhallImport
-fromImport i | importMode i == Code = asDhall <$> mImport i
-             | otherwise = asOther <$> mImport i
+fromImport i@(Import _ Code) = asDhall <$> mImport i
+fromImport i                 = asOther <$> mImport i
 
 mImport :: Import -> IO (Maybe FilePath)
 mImport = fromImportType . importType . importHashed
