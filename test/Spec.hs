@@ -7,7 +7,14 @@ import           Test.Tasty.HUnit
 main :: IO ()
 main = defaultMain $
     testGroup "Dhall.Deps"
-        [ unitTest ]
+        [ unitTest
+        , regressionTest
+        ]
+
+regressionTest :: TestTree
+regressionTest = testCase "test/data/regression.dhall" $ do
+    res <- getAllFileDeps "test/data/regression.dhall"
+    res @?= [ "test/data/foo.conf" ]
 
 unitTest :: TestTree
 unitTest = testCase "test/data/expr2.dhall" $ do

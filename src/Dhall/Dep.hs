@@ -4,12 +4,13 @@ module Dhall.Dep ( getFileDeps
 
 import           Control.Exception         (throw)
 import           Control.Monad             ((<=<))
+import           Data.Bifunctor            (first, second)
 import           Data.Containers.ListUtils (nubOrd)
 import           Data.Foldable             (toList)
-import           Data.Maybe                (catMaybes)
 import qualified Data.Text.IO              as T
-import           Dhall.Core                (Import, ImportType (..),
-                                            importHashed, importType)
+import           Dhall.Core                (Import, ImportMode (Code),
+                                            ImportType (Local), importHashed,
+                                            importMode, importType)
 import           Dhall.Import              (localToPath)
 import           Dhall.Parser              (exprFromText)
 import           System.Directory          (canonicalizePath,
@@ -18,29 +19,83 @@ import           System.FilePath           (isAbsolute, takeDirectory, (</>))
 
 -- | Given a path, the file paths it depends on
 getFileDeps :: FilePath -> IO [FilePath]
-getFileDeps fp = do
+getFileDeps fp =
+    traverse canonicalizeRelative =<<
+        catFilePaths <$> getCodeDeps fp
+
+getCodeDeps :: FilePath -> IO [DhallImport]
+getCodeDeps fp = do
     contents <- T.readFile fp
     let fileDir = takeDirectory fp
         fileMod fp' = if isAbsolute fp' then fp' else fileDir </> fp'
+        importMod = mapFp fileMod
         tree = either throw id (exprFromText fp contents)
         imports = toList tree
-    traverse canonicalizeRelative =<<
-        catMaybes <$> traverse (fmap (fileMod <$>) . fromImport) imports
+    filter isRelevant <$>
+        traverse ((importMod <$>) . fromImport) imports
 
 canonicalizeRelative :: FilePath -> IO FilePath
 canonicalizeRelative = makeRelativeToCurrentDirectory <=< canonicalizePath
 
--- | Get all transitive dependencies
-getAllFileDeps :: FilePath -> IO [FilePath]
-getAllFileDeps fp = do
-    deps <- getFileDeps fp
-    level <- traverse getAllFileDeps deps
+getAllCodeDeps :: FilePath -> IO [DhallImport]
+getAllCodeDeps fp = do
+    deps <- traverse (traverseFp canonicalizeRelative) =<< getCodeDeps fp
+    let (nextSrc, _) = partitionImports deps
+    level <- traverse getAllCodeDeps nextSrc
     pure $ if null level
         then deps
         else nubOrd (concat (deps : level))
 
-fromImport :: Import -> IO (Maybe FilePath)
-fromImport = fromImportType . importType . importHashed
+-- | Get all transitive dependencies
+getAllFileDeps :: FilePath -> IO [FilePath]
+getAllFileDeps =
+    fmap catFilePaths . getAllCodeDeps
+
+data DhallImport = DhallCode FilePath
+                 | OtherImport FilePath
+                 | Irrelevant -- for URLs and such
+                 deriving (Ord, Eq)
+
+partitionImports :: [DhallImport] -> ([FilePath], [FilePath])
+partitionImports []                  = ([], [])
+partitionImports (Irrelevant:is)     = partitionImports is
+partitionImports (DhallCode fp:is)   = first (fp:) $ partitionImports is
+partitionImports (OtherImport fp:is) = second (fp:) $ partitionImports is
+
+mapFp :: (FilePath -> FilePath) -> DhallImport -> DhallImport
+mapFp f (DhallCode fp)   = DhallCode $ f fp
+mapFp f (OtherImport fp) = OtherImport $ f fp
+mapFp _ Irrelevant       = Irrelevant
+
+traverseFp :: Applicative f => (FilePath -> f FilePath) -> DhallImport -> f DhallImport
+traverseFp f (DhallCode fp)   = DhallCode <$> f fp
+traverseFp f (OtherImport fp) = OtherImport <$> f fp
+traverseFp _ Irrelevant       = pure Irrelevant
+
+catFilePaths :: [DhallImport] -> [FilePath]
+catFilePaths []                  = []
+catFilePaths (Irrelevant:is)     = catFilePaths is
+catFilePaths (DhallCode fp:is)   = fp : catFilePaths is
+catFilePaths (OtherImport fp:is) = fp : catFilePaths is
+
+isRelevant :: DhallImport -> Bool
+isRelevant Irrelevant = False
+isRelevant _          = True
+
+fromImport :: Import -> IO DhallImport
+fromImport i | importMode i == Code = asDhall <$> mImport i
+             | otherwise = asOther <$> mImport i
+
+mImport :: Import -> IO (Maybe FilePath)
+mImport = fromImportType . importType . importHashed
+
+asDhall :: Maybe FilePath -> DhallImport
+asDhall (Just fp) = DhallCode fp
+asDhall Nothing   = Irrelevant
+
+asOther :: Maybe FilePath -> DhallImport
+asOther (Just fp) = OtherImport fp
+asOther Nothing   = Irrelevant
 
 fromImportType :: ImportType -> IO (Maybe FilePath)
 fromImportType (Local pre fp) = Just <$> localToPath pre fp

@@ -1,5 +1,9 @@
 # shake-dhall
 
+## 0.1.1.3
+
+  * Fix bug when importing `as Text`
+
 ## 0.1.1.2
 
   * Add test suite
