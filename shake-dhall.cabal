@@ -8,7 +8,7 @@ maintainer:      vamchale@gmail.com
 author:          Vanessa McHale
 synopsis:        Dhall dependencies
 description:     Dependency tracking in Dhall
-category:        Language, Dhall
+category:        Language, Dhall, Development, Shake
 build-type:      Simple
 extra-doc-files:
     README.md
