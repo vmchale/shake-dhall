@@ -19,8 +19,7 @@ import           System.FilePath           (isAbsolute, takeDirectory, (</>))
 -- | Given a path, the file paths it depends on
 getFileDeps :: FilePath -> IO [FilePath]
 getFileDeps fp =
-    traverse canonicalizeRelative =<<
-        catFilePaths <$> getCodeDeps fp
+    traverse canonicalizeRelative . catFilePaths =<< getCodeDeps fp
 
 getCodeDeps :: FilePath -> IO [DhallImport]
 getCodeDeps fp = do
