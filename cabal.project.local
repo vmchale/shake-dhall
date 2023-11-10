@@ -1,0 +1,1 @@
+constraints: zlib -pkg-config +bundled-c-zlib
